@@ -948,6 +948,23 @@ select:disabled, input:disabled { opacity: 0.6; cursor: default; }
     0 12px 22px rgba(0, 0, 0, 0.4);
 }
 .hand.my-turn.selecting .card:not(.selected):not(.joinable) { filter: brightness(0.45) saturate(0.5); }
+/* "×2": this card can go down together with others */
+.combo-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--jade);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
 .hand .card.drawn { transform: translateY(-20px); }
 .hand .card.new { animation: deal 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--delay, 0ms); }
 .hand .card.shake { animation: shake 0.3s; }

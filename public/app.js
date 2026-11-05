@@ -76,8 +76,8 @@
   const artSrc = c => (c.color === 'wild' ? `img/${c.value}.svg` : `img/${c.color}-${c.value}.svg`);
   const artTag = src => `<img class="art" src="${src}" alt="" draggable="false" decoding="async">`;
 
-  function cardHTML(c, { tag = 'div', cls = '', attrs = '' } = {}) {
-    return `<${tag} class="card c-${c.color} ${cls}" data-id="${c.id}" ${attrs}><span class="face">${cardFace(c)}</span>${artTag(artSrc(c))}<span class="shine"></span></${tag}>`;
+  function cardHTML(c, { tag = 'div', cls = '', attrs = '', extra = '' } = {}) {
+    return `<${tag} class="card c-${c.color} ${cls}" data-id="${c.id}" ${attrs}><span class="face">${cardFace(c)}</span>${artTag(artSrc(c))}<span class="shine"></span>${extra}</${tag}>`;
   }
   const backHTML = (cls = '') => `<span class="card back ${cls}"><span class="face"></span>${artTag('img/back.svg')}<span class="shine"></span></span>`;
 
@@ -674,10 +674,14 @@
           .join(' ');
         const delay = isNew ? k++ * (freshDeal ? 55 : 70) : 0;
         const { fan, drop } = geo.pos(i);
-        const label = `${cardLabel(c)}${picked ? ', selected' : can || joinable ? '' : ', can’t play now'}`;
+        // Show at a glance which playable cards can go down together with others.
+        const set = myTurn && can && !selection ? comboFor(c, g.hand).length : 0;
+        const badge = set > 1 ? `<span class="combo-badge" aria-hidden="true">×${set}</span>` : '';
+        const label = `${cardLabel(c)}${picked ? ', selected' : can || joinable ? '' : ', can’t play now'}${set > 1 ? `, can go down with ${set - 1} more` : ''}`;
         return cardHTML(c, {
           tag: 'button',
           cls,
+          extra: badge,
           attrs: `type="button" aria-label="${esc(label)}"${can || picked || joinable ? '' : ' aria-disabled="true"'} aria-pressed="${picked}" style="--delay:${delay}ms;--fan:${fan}deg;--drop:${drop}px"`,
         });
       })
