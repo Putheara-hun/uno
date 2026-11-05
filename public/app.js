@@ -126,7 +126,7 @@
   const FILE_HELP =
     'This page was opened straight from disk, so it can’t reach the game server. Double-click start.cmd (or run “npm start”), then open http://localhost:3000';
   const ANSWER_TIMEOUT = 6000;
-  const PROTOCOL = 3; // must match server.js
+  const PROTOCOL = 4; // must match server.js
   const OUTDATED_HELP =
     'The game server is running an older version of RaDrop. Close the server window and double-click start.cmd again (or restart “npm start”), then reload this page.';
 
@@ -553,7 +553,7 @@
         const answer =
           g.pendingKind === 'wild4'
             ? 'Stack a +4'
-            : `Stack a +2 (any color), bounce it back with a ${COLOR_NAME[g.color]} Reverse`;
+            : `Stack +2s (any colors, each adds 2), bounce it back with ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse`;
         return {
           text: g.playable.length ? `${answer} — or take ${g.pendingDraw}` : `Nothing to answer with — take ${g.pendingDraw}`,
           cls: 'mine warn',
@@ -578,13 +578,17 @@
     if (cards.length <= 1) return true;
     const first = cards[0];
     if (cards.every(c => isNum(c.value) && c.value === first.value)) return true;
+    if (cards.every(c => c.value === 'draw2')) return true;
     if (!cards.every(isAction)) return false;
     return cards.every(c => c.value === first.value) || cards.every(c => c.color === first.color);
   }
 
-  /** The biggest set this card can go down with. */
+  /** The biggest set this card can go down with (only more +2s while answering a +2). */
   function comboFor(card, hand) {
+    const g = state && state.game;
+    if (g && g.pendingDraw && card.value !== 'draw2') return [card];
     if (isNum(card.value)) return hand.filter(c => isNum(c.value) && c.value === card.value);
+    if (card.value === 'draw2') return hand.filter(c => c.value === 'draw2');
     if (!isAction(card)) return [card];
     const bySymbol = hand.filter(c => c.value === card.value);
     const byColor = hand.filter(c => isAction(c) && c.color === card.color);
@@ -596,9 +600,10 @@
   /** A selection stays valid while it's still my turn, the cards are still mine and combine, and one can lead. */
   function selectionValid() {
     const g = state && state.game;
-    if (!selection || !g || !g.hand || g.turn !== state.you || g.pendingDraw) return false;
+    if (!selection || !g || !g.hand || g.turn !== state.you) return false;
     const ids = [...selection.ids];
     const cards = selectedCards();
+    if (g.pendingDraw && !cards.every(c => c.value === 'draw2')) return false; // answering a +2: only +2 sets
     return ids.length > 0 && cards.length === ids.length && canCombine(cards) && ids.some(id => g.playable.includes(id));
   }
 
@@ -652,7 +657,7 @@
       .map((c, i) => {
         const can = playable.has(c.id);
         const picked = !!selection && selection.ids.has(c.id);
-        const joinable = !!selection && !picked && canCombine([...chosen, c]);
+        const joinable = !!selection && !picked && canCombine([...chosen, c]) && (!g.pendingDraw || c.value === 'draw2');
         const isNew = !handSeen.ids.has(c.id);
         const cls = [
           can || picked || joinable ? 'playable' : 'dim',
@@ -1058,7 +1063,7 @@
         renderTable(null);
         return;
       }
-      if (canCombine([...selectedCards(), card])) {
+      if (canCombine([...selectedCards(), card]) && (!g.pendingDraw || card.value === 'draw2')) {
         selection.ids.add(id);
         renderTable(null);
         return;
@@ -1076,7 +1081,7 @@
       }
       if (myTurn) {
         if (g.pendingDraw && g.pendingKind === 'wild4') toast(`Only a +4 can answer a +4 — or take ${g.pendingDraw}`);
-        else if (g.pendingDraw) toast(`Answer with a +2, a ${COLOR_NAME[g.color]} Reverse, or take ${g.pendingDraw}`);
+        else if (g.pendingDraw) toast(`Answer with +2s, ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse, or take ${g.pendingDraw}`);
         else if (g.drawnCardId !== null) toast('Only the card you just drew can be played');
         else toast('That card doesn’t match');
       }
@@ -1087,7 +1092,7 @@
       return;
     }
     // Holding cards that can go down with it? Select them all; the player can then trim the set.
-    const group = g.pendingDraw ? [card] : comboFor(card, g.hand);
+    const group = comboFor(card, g.hand);
     if (group.length > 1) {
       selection = { ids: new Set(group.map(c => c.id)) };
       renderTable(null);

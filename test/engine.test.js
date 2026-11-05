@@ -269,11 +269,11 @@ test('a multi-drop needs one card that matches, and only matching numbers', () =
     { id: 2, color: 'amber', value: '2' },
     { id: 3, color: 'ruby', value: '3' },
     { id: 4, color: 'ruby', value: 'draw2' },
-    { id: 5, color: 'ruby', value: 'draw2' },
+    { id: 5, color: 'ruby', value: 'skip' },
   ]);
   assert.throws(() => g.play('a', [1, 2]), /match/, 'neither 2 matches a ruby 7');
   assert.throws(() => g.play('a', [1, 3]), /same number/);
-  assert.throws(() => g.play('a', [4, 5]), /same number/, '+2 cards are not combined (they stack instead)');
+  assert.throws(() => g.play('a', [4, 5]), /same number/, 'a +2 and a Skip cannot be combined');
   assert.equal(g.players[0].hand.length, 5);
 });
 
@@ -435,6 +435,64 @@ test('no combos while answering a +2', () => {
   assert.throws(() => g.play('b', [2, 3], 'jade'), /single card/);
   g.play('b', [2]); // the bounce on its own is fine
   assert.equal(g.current.id, 'a');
+});
+
+/* ---- +2 combos ---- */
+
+test('two +2s of different colors go down together and both count', () => {
+  const g = stackGame(['a', 'b', 'c'], [[{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'ruby', value: 'draw2' }], [], []]);
+  g.play('a', [1, 2], 'ruby');
+  assert.equal(g.pendingDraw, 4);
+  assert.equal(g.currentColor, 'ruby');
+  assert.equal(g.top.id, 2);
+  assert.equal(g.current.id, 'b');
+});
+
+test('a +2 coming at you can be answered with two +2s at once', () => {
+  const g = stackGame(
+    ['a', 'b', 'c'],
+    [[{ id: 1, color: 'amber', value: 'draw2' }], [{ id: 2, color: 'jade', value: 'draw2' }, { id: 3, color: 'violet', value: 'draw2' }], []]
+  );
+  g.play('a', 1);
+  g.play('b', [2, 3], 'violet');
+  assert.equal(g.pendingDraw, 6);
+  assert.equal(g.current.id, 'c');
+  const before = g.player('c').hand.length;
+  g.draw('c');
+  assert.equal(g.player('c').hand.length, before + 6);
+});
+
+test('without stacking, two +2s make the next player draw 4 and lose their turn', () => {
+  const g = new Game(['a', 'b', 'c']);
+  g.turn = 0;
+  g.direction = 1;
+  g.discard.push({ id: 900, color: 'amber', value: '5' });
+  g.currentColor = 'amber';
+  g.players[0].hand = [{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'jade', value: 'draw2' }, { id: 3, color: 'jade', value: '1' }];
+  const before = g.player('b').hand.length;
+  g.play('a', [1, 2], 'jade');
+  assert.equal(g.player('b').hand.length, before + 4);
+  assert.equal(g.current.id, 'c');
+});
+
+test('a +2 cannot be combined with other kinds of cards', () => {
+  const g = stackGame(['a', 'b'], [[{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'amber', value: 'skip' }], []]);
+  assert.throws(() => g.play('a', [1, 2]), GameError);
+});
+
+test('finishing with two +2s still hands out all four cards', () => {
+  const g = stackGame(['a', 'b'], [[], []]);
+  g.players[0].hand = [{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'ruby', value: 'draw2' }];
+  const before = g.player('b').hand.length;
+  g.play('a', [1, 2], 'ruby');
+  assert.ok(g.over);
+  assert.equal(g.player('b').hand.length, before + 4);
+});
+
+test('bots drop all their +2s together', () => {
+  const g = stackGame(['a', 'b'], [[{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'violet', value: 'draw2' }], []]);
+  const move = botMove(g, 'a');
+  if (move.cardIds.includes(1)) assert.deepEqual(move.cardIds.slice().sort(), [1, 2]);
 });
 
 test('last card can be called when a Skip/Reverse combo would leave one card', () => {

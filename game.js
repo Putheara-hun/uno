@@ -9,6 +9,8 @@
  *   - number cards with the same number, whatever their colors;
  *   - Skips and Reverses that share a symbol (any colors) or share a color (a Skip + Reverse pair).
  *     They act once: a Reverse flips play, then a Skip jumps the next player.
+ *   - several +2s (any colors): every one counts, so two +2s make the next player face +4.
+ *     Answering a +2 allows only +2 combos.
  * Stacking (option): a +2 may be answered with a +2 of any color or a +4, passing the growing
  * penalty on; or bounced back to its sender with a Reverse of the current color. A +4 only takes a +4.
  */
@@ -56,6 +58,7 @@ function canCombine(cards) {
   if (cards.length <= 1) return true;
   const first = cards[0];
   if (cards.every(c => isNumber(c) && c.value === first.value)) return true;
+  if (cards.every(c => c.value === 'draw2')) return true;
   if (!cards.every(isAction)) return false;
   return cards.every(c => c.value === first.value) || cards.every(c => c.color === first.color);
 }
@@ -63,6 +66,7 @@ function canCombine(cards) {
 /** The biggest set this card could go down with. */
 function comboFor(card, hand) {
   if (isNumber(card)) return hand.filter(c => isNumber(c) && c.value === card.value);
+  if (card.value === 'draw2') return hand.filter(c => c.value === 'draw2');
   if (!isAction(card)) return [card];
   const bySymbol = hand.filter(c => c.value === card.value);
   const byColor = hand.filter(c => isAction(c) && c.color === card.color);
@@ -75,6 +79,7 @@ function comboGroups(hand) {
   const add = (key, c) => groups.set(key, [...(groups.get(key) || []), c]);
   for (const c of hand) {
     if (isNumber(c)) add(`n${c.value}`, c);
+    if (c.value === 'draw2') add('d', c);
     if (isAction(c)) {
       add(`s${c.value}`, c);
       add(`c${c.color}`, c);
@@ -209,9 +214,11 @@ class Game {
       throw new GameError('You can only play the card you just drew.');
     }
     if (cards.length > 1) {
-      if (this.pendingDraw > 0) throw new GameError('Answer a +2 with a single card.');
+      if (this.pendingDraw > 0 && !cards.every(c => c.value === 'draw2')) {
+        throw new GameError('When answering a +2, only +2 cards can go down together — or play a single card.');
+      }
       if (!canCombine(cards)) {
-        throw new GameError('Only same numbers, or Skips and Reverses that share a symbol or a color, can go down together.');
+        throw new GameError('Only same numbers, several +2s, or Skips and Reverses that share a symbol or a color, can go down together.');
       }
     }
     const lead = cards.find(c => this.canPlay(c));
@@ -247,7 +254,7 @@ class Game {
       let amount = 0;
       if (card.value === 'draw2' || card.value === 'wild4') {
         victim = this.players[this.nextIndex(1)];
-        amount = this.pendingDraw + (card.value === 'draw2' ? 2 : 4);
+        amount = this.pendingDraw + (card.value === 'draw2' ? 2 * cards.length : 4);
       } else if (card.value === 'reverse' && this.pendingDraw > 0) {
         this.direction *= -1;
         victim = this.players[this.nextIndex(1)];
@@ -305,7 +312,7 @@ class Game {
       }
       case 'draw2':
       case 'wild4': {
-        const amount = card.value === 'draw2' ? 2 : 4;
+        const amount = card.value === 'draw2' ? 2 * cards.length : 4; // every +2 dropped counts
         if (this.options.stacking) {
           this.pendingDraw += amount;
           this.pendingKind = card.value;
@@ -364,9 +371,10 @@ class Game {
     if (p.hand.length === 1) return true;
     if (this.current.id !== playerId) return false;
     if (p.hand.length === 2) return true;
-    if (this.pendingDraw > 0) return false; // answering a +2 is one card at a time
     const playable = new Set(this.playableIds(playerId));
-    return comboGroups(p.hand).some(g => g.length === p.hand.length - 1 && g.some(c => playable.has(c.id)));
+    // While answering a +2, only a set of +2s can go down together.
+    const groups = this.pendingDraw > 0 ? [p.hand.filter(c => c.value === 'draw2')] : comboGroups(p.hand);
+    return groups.some(g => g.length === p.hand.length - 1 && g.some(c => playable.has(c.id)));
   }
 
   callLast(playerId) {
@@ -412,8 +420,8 @@ function botMove(game, playerId) {
   const next = game.players[game.nextIndex(1)];
   const danger = next.hand.length <= 2;
 
-  // Everything that can go down with this card (nothing extra while answering a +2).
-  const groupOf = c => (game.pendingDraw > 0 ? [c] : comboFor(c, me.hand));
+  // Everything that can go down with this card (only more +2s while answering a +2).
+  const groupOf = c => (game.pendingDraw > 0 && c.value !== 'draw2' ? [c] : comboFor(c, me.hand));
 
   let best = null;
   let bestScore = -Infinity;
@@ -423,7 +431,7 @@ function botMove(game, playerId) {
       s = c.value === 'wild4' ? (danger ? 50 : -40) : danger ? 5 : -25;
     } else {
       s = (counts[c.color] || 0) * 4;
-      if (c.value === 'draw2') s += danger ? 45 : 10;
+      if (c.value === 'draw2') s += (danger ? 45 : 10) + (groupOf(c).length - 1) * 8;
       else if (isAction(c)) s += (danger ? 35 : 6) + (groupOf(c).length - 1) * 6;
       else s += Number(c.value) * 0.6 + (groupOf(c).length - 1) * 7; // dumping a whole set is great
     }
