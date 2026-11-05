@@ -280,7 +280,32 @@ test('the turn timer lets autopilot move for an idle player', async () => {
   }
 });
 
-/* ---- raw protocol checks for the hand-rolled WebSocket ---- */
+/* ---- limits for the open internet ---- */
+
+test('a connection that floods the server is cut off', async () => {
+  const c = await new Client().open();
+  const closed = new Promise(resolve => {
+    c.ws.onclose = e => resolve(e.code);
+  });
+  for (let i = 0; i < 150; i++) c.send({ t: 'chat', text: `spam ${i}` });
+  assert.equal(await closed, 1008);
+});
+
+test('hopping to a new room does not leave your empty lobby behind', async () => {
+  const c = await host();
+  const first = c.state.code;
+  c.send({ t: 'create', name: 'Alice' });
+  await c.waitState(s => s.code !== first);
+  assert.equal(rooms.has(first), false);
+  assert.equal(rooms.has(c.state.code), true);
+  await c.close();
+});
+
+test('pages are served with a content security policy', async () => {
+  const res = await fetch(`http://127.0.0.1:${port}/`);
+  assert.match(res.headers.get('content-security-policy') || '', /default-src 'self'/);
+});
+
 
 function rawConnect() {
   return new Promise((resolve, reject) => {

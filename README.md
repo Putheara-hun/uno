@@ -16,6 +16,20 @@ npm start          # or: node server.js
 
 Then open <http://localhost:3000>, pick a name and **Create a room**. Share the 4-letter code or the invite link. The server prints your LAN address so people on the same Wi-Fi can join. To change the port, set `PORT` (for example `set PORT=3001` on Windows, then `npm start`).
 
+## Play online (free hosting on Render)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Putheara-hun/uno)
+
+1. Click the button above and sign in to Render with your GitHub account. It's free and needs no card.
+2. Render reads `render.yaml` and proposes a free web service called **radrop**. Click **Apply** / **Deploy**.
+3. After a minute or two you get an address like `https://radrop.onrender.com`. Share it: anyone can open it from any phone or computer, create a room, and invite friends with the room code.
+
+Every time the GitHub repo is updated, Render redeploys automatically.
+
+Good to know about the free plan:
+- If nobody has used the game for about 15 minutes, Render puts it to sleep. The next visitor waits 30–60 seconds while it wakes up, and then it's fast again.
+- Rooms live in the server's memory, so a sleep or redeploy ends any games in progress. Just create a new room.
+
 > Don't open `public/index.html` directly, or through an editor preview such as Live Server. The game needs `server.js` running and must be loaded from it. If the page can't reach the server, it says so.
 
 ## How to play

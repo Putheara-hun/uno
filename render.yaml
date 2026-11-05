@@ -1,0 +1,11 @@
+# Render blueprint: deploys RaDrop as a free web service.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: radrop
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true

@@ -24,8 +24,15 @@ const MAX_MESSAGE = 4096;
 const TURN_TIMERS = [0, 30, 60]; // seconds, 0 = off
 const AWAY_DELAY = 2500; // a disconnected player's turn is auto-drawn after this
 const HOST_GRACE = 8000; // a disconnected host keeps the role this long (page reloads)
-const ROOM_IDLE_MS = 30 * 60 * 1000;
 const FEED_LIMIT = 100;
+
+// Limits for running on the open internet.
+const EMPTY_ROOM_MS = 10 * 60 * 1000; // a room nobody is connected to is dropped after this…
+const EMPTY_LOBBY_MS = 3 * 60 * 1000; // …or sooner if no game was ever dealt in it
+const MAX_ROOMS = 500;
+const MAX_SOCKETS = 2000;
+const RATE_WINDOW_MS = 10_000;
+const RATE_MAX = 100; // messages per connection per window; real play sends a handful
 const BOT_NAMES = ['Pixel', 'Nova', 'Biscuit', 'Ziggy', 'Juniper', 'Echo', 'Waffles', 'Mochi', 'Pebble', 'Sprocket'];
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -737,10 +744,24 @@ class Room {
 
 const sockets = new Set();
 
+/** Drop rooms that nobody is connected to any more. */
+function sweepRooms(now = Date.now()) {
+  for (const r of rooms.values()) {
+    if (r.members.some(m => m.sockets.size)) continue;
+    if (now - r.lastActive > (r.round === 0 ? EMPTY_LOBBY_MS : EMPTY_ROOM_MS)) r.destroy();
+  }
+}
+
 function handleConnection(ws) {
+  if (sockets.size >= MAX_SOCKETS) {
+    ws.close(1013); // try again later
+    return;
+  }
   sockets.add(ws);
   let room = null;
   let me = null;
+  let windowStart = Date.now();
+  let messages = 0;
   const reply = obj => ws.send(JSON.stringify(obj));
   // Lets the page know it reached the real game server, and which protocol it speaks.
   // Bump PROTOCOL whenever the client and server must change together.
@@ -755,6 +776,15 @@ function handleConnection(ws) {
   };
 
   ws.on('message', text => {
+    const now = Date.now();
+    if (now - windowStart > RATE_WINDOW_MS) {
+      windowStart = now;
+      messages = 0;
+    }
+    if (++messages > RATE_MAX) {
+      ws.close(1008); // flooding
+      return;
+    }
     let msg;
     try {
       msg = JSON.parse(text);
@@ -768,10 +798,19 @@ function handleConnection(ws) {
         case 'create':
         case 'join':
         case 'resume': {
-          if (room) room.detach(me, ws);
+          if (room) {
+            const old = room;
+            const oldMe = me;
+            old.detach(oldMe, ws);
+            // Hopping away from a lobby you're alone in: don't leave the empty room behind.
+            const humans = old.members.filter(x => !x.bot && !x.left);
+            if (old.phase === 'lobby' && humans.length === 1 && humans[0] === oldMe && !oldMe.sockets.size) old.leave(oldMe);
+          }
           room = me = null;
           const code = String(msg.code || '').trim().toUpperCase();
           if (msg.t === 'create') {
+            if (rooms.size >= MAX_ROOMS) sweepRooms();
+            if (rooms.size >= MAX_ROOMS) throw new GameError('The server is full right now — please try again in a few minutes.');
             const r = new Room();
             attach(r, r.addHuman(msg.name));
           } else if (msg.t === 'join') {
@@ -871,11 +910,17 @@ const server = http.createServer((req, res) => {
       res.end('Not found');
       return;
     }
-    res.writeHead(200, {
+    const headers = {
       'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
-    });
+      'Referrer-Policy': 'no-referrer',
+    };
+    if (file.endsWith('.html')) {
+      headers['Content-Security-Policy'] =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+    }
+    res.writeHead(200, headers);
     res.end(req.method === 'HEAD' ? undefined : data);
   });
 });
@@ -907,13 +952,8 @@ setInterval(() => {
   }
 }, 30_000).unref();
 
-// Forget rooms nobody has touched in a while.
-setInterval(() => {
-  const now = Date.now();
-  for (const r of rooms.values()) {
-    if (!r.members.some(m => m.sockets.size) && now - r.lastActive > ROOM_IDLE_MS) r.destroy();
-  }
-}, 60_000).unref();
+// Forget rooms nobody is connected to.
+setInterval(() => sweepRooms(), 30_000).unref();
 
 function openBrowser(url) {
   const cmd =
