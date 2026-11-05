@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 350" width="250" height="350">
+<defs>
+  <clipPath id="card"><rect width="250" height="350" rx="21"/></clipPath>
+  <linearGradient id="stock" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f6f2ea"/><stop offset="1" stop-color="#e2dbcc"/>
+  </linearGradient>
+  <linearGradient id="panel" x1=".1" y1="0" x2=".9" y2="1">
+    <stop offset="0" stop-color="#bea2ff"/><stop offset=".48" stop-color="#7d4cf2"/><stop offset="1" stop-color="#4721aa"/>
+  </linearGradient>
+  <radialGradient id="glow" cx=".28" cy=".12" r=".85">
+    <stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="vignette" cx=".5" cy=".5" r=".7">
+    <stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/>
+  </radialGradient>
+  <linearGradient id="gloss" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="pearl" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#f7f4ee"/><stop offset="1" stop-color="#dcd5c6"/>
+  </linearGradient>
+  <filter id="paper" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" seed="52" stitchTiles="stitch"/>
+    <feColorMatrix values="0 0 0 0 .42  0 0 0 0 .37  0 0 0 0 .3  0 0 0 .16 0"/>
+  </filter>
+  <filter id="bevel" x="-25%" y="-25%" width="150%" height="150%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+    <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1" specularExponent="24" lighting-color="#ffffff" result="spec">
+      <feDistantLight azimuth="235" elevation="42"/>
+    </feSpecularLighting>
+    <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>
+    <feComposite in="SourceGraphic" in2="specIn" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="lit"/>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="sblur"/>
+    <feOffset in="sblur" dx="3" dy="6" result="soff"/>
+    <feFlood flood-color="#000" flood-opacity=".38"/>
+    <feComposite in2="soff" operator="in" result="shadow"/>
+    <feMerge><feMergeNode in="shadow"/><feMergeNode in="lit"/></feMerge>
+  </filter>
+  <filter id="lift" x="-25%" y="-25%" width="150%" height="150%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="1.6" result="b"/>
+    <feOffset in="b" dx="2" dy="3" result="o"/>
+    <feFlood flood-color="#000" flood-opacity=".35"/>
+    <feComposite in2="o" operator="in" result="s"/>
+    <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<g clip-path="url(#card)">
+  <rect width="250" height="350" fill="url(#stock)"/>
+  <rect x="13" y="13" width="224" height="324" rx="13" fill="url(#panel)"/>
+  <g clip-path="url(#card)"><path d="M125 175L13 13L125 13Z" fill="#fff" fill-opacity="0.1"/><path d="M125 175L125 13L237 13Z" fill="#000" fill-opacity="0.05"/><path d="M125 175L237 13L237 175Z" fill="#fff" fill-opacity="0.06"/><path d="M125 175L237 175L237 337Z" fill="#000" fill-opacity="0.1"/><path d="M125 175L237 337L125 337Z" fill="#000" fill-opacity="0.12"/><path d="M125 175L125 337L13 337Z" fill="#fff" fill-opacity="0.04"/><path d="M125 175L13 337L13 175Z" fill="#000" fill-opacity="0.08"/><path d="M125 175L13 175L13 13Z" fill="#fff" fill-opacity="0.12"/></g>
+  <rect x="13" y="13" width="224" height="324" rx="13" fill="url(#vignette)"/>
+  <rect x="13" y="13" width="224" height="324" rx="13" fill="url(#glow)"/>
+  <rect x="14.5" y="14.5" width="221" height="321" rx="12" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2"/>
+  <rect x="13" y="13" width="224" height="324" rx="13" fill="none" stroke="#230d63" stroke-opacity=".55" stroke-width="1.5"/>
+  <g filter="url(#bevel)"><rect x="52" y="102" width="146" height="146" rx="21.9" transform="rotate(45 125 175)" fill="url(#pearl)"/></g><g filter="url(#lift)"><g stroke-linecap="round">
+    <g stroke="#230d63" stroke-width="29.44"><circle cx="125" cy="175" r="53.36" fill="none"/><path d="M87.28 212.72L162.72 137.28"/></g>
+    <g stroke="#7d4cf2" stroke-width="18.4"><circle cx="125" cy="175" r="53.36" fill="none"/><path d="M87.28 212.72L162.72 137.28"/></g>
+  </g></g><g transform="translate(37 44)"><g stroke-linecap="round">
+    <g stroke="#230d63" stroke-width="9.86"><circle cx="0" cy="0" r="16.24" fill="none"/><path d="M-11.48 11.48L11.48 -11.48"/></g>
+    <g stroke="#fff" stroke-width="6.16"><circle cx="0" cy="0" r="16.24" fill="none"/><path d="M-11.48 11.48L11.48 -11.48"/></g>
+  </g><path d="M0 24.94L6.5 33L0 41.06L-6.5 33Z" fill="#fff" stroke="#230d63" stroke-width="2.5" stroke-linejoin="round"/></g><g transform="rotate(180 125 175)"><g transform="translate(37 44)"><g stroke-linecap="round">
+    <g stroke="#230d63" stroke-width="9.86"><circle cx="0" cy="0" r="16.24" fill="none"/><path d="M-11.48 11.48L11.48 -11.48"/></g>
+    <g stroke="#fff" stroke-width="6.16"><circle cx="0" cy="0" r="16.24" fill="none"/><path d="M-11.48 11.48L11.48 -11.48"/></g>
+  </g><path d="M0 24.94L6.5 33L0 41.06L-6.5 33Z" fill="#fff" stroke="#230d63" stroke-width="2.5" stroke-linejoin="round"/></g></g>
+  <rect width="250" height="350" filter="url(#paper)"/>
+  <path d="M0 0H155L0 175Z" fill="url(#gloss)" opacity=".5"/>
+</g>
+<rect x=".75" y=".75" width="248.5" height="348.5" rx="20.25" fill="none" stroke="#3a2f1c" stroke-opacity=".35" stroke-width="1.5"/>
+</svg>

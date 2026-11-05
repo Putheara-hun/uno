@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RaDrop</title>
+  <meta name="description" content="A fast color-matching card game for 2–8 players. Play with friends or bots in your browser.">
+  <meta name="theme-color" content="#120f1f">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="RaDrop home"><span class="brand-gem" aria-hidden="true"></span>RaDrop</a>
+      <div class="room-chip" id="roomChip" hidden>
+        <span class="muted">Room</span>
+        <button type="button" class="code-btn" id="codeBtn" title="Copy invite link"></button>
+        <span class="round-label" id="roundLabel"></span>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="ghost rules-btn" id="rulesBtn" data-open-rules aria-label="How to play"><span class="q" aria-hidden="true">?</span><span class="lbl">Rules</span></button>
+        <button type="button" class="ghost feed-toggle" id="feedToggle" hidden aria-controls="side" aria-expanded="false">
+          Chat<span class="badge" id="unread" hidden></span>
+        </button>
+        <button type="button" class="ghost" id="leaveBtn" hidden>Leave</button>
+      </div>
+    </header>
+
+    <div class="body">
+      <main class="main">
+        <!-- Home -->
+        <section class="screen home" id="home">
+          <div class="hero">
+            <div class="hero-fan" id="heroFan" aria-hidden="true"></div>
+            <h1>RaDrop</h1>
+            <p class="tagline">Match the color or the symbol. Shed every card.<br>Don’t forget to call your last one.</p>
+          </div>
+
+          <form class="panel home-form" id="homeForm" autocomplete="off">
+            <label class="field">
+              <span>Your name</span>
+              <input id="nameInput" maxlength="16" autocomplete="nickname" placeholder="e.g. Sam" required>
+            </label>
+            <div class="join-banner" id="joinBanner" hidden>
+              Invited to room <strong id="joinBannerCode"></strong>
+            </div>
+            <button type="button" class="primary big" id="createBtn">Create a room</button>
+            <div class="divider"><span>or join a friend</span></div>
+            <div class="join-row">
+              <input id="codeInput" maxlength="4" placeholder="CODE" aria-label="Room code" autocapitalize="characters" spellcheck="false">
+              <button type="button" id="joinBtn">Join</button>
+            </div>
+            <p class="form-error" id="homeError" role="alert"></p>
+          </form>
+
+          <button type="button" class="panel how-to" id="howToBtn" data-open-rules>
+            <span class="how-to-cards" aria-hidden="true">
+              <img src="img/amber-7.svg" alt=""><img src="img/jade-7.svg" alt=""><img src="img/wild.svg" alt="">
+            </span>
+            <span class="how-to-text"><b>How to play</b><span class="muted small">The rules with picture examples</span></span>
+            <span class="how-to-go" aria-hidden="true">›</span>
+          </button>
+        </section>
+
+        <!-- Lobby -->
+        <section class="screen lobby" id="lobby" hidden>
+          <div class="panel lobby-code">
+            <div>
+              <div class="eyebrow">Room code</div>
+              <div class="big-code" id="lobbyCode"></div>
+            </div>
+            <button type="button" id="copyLink">Copy invite link</button>
+          </div>
+
+          <div class="lobby-grid">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Players</h2>
+                <span class="muted" id="playerCount"></span>
+              </div>
+              <ul class="lobby-players" id="lobbyPlayers"></ul>
+              <button type="button" class="ghost add-bot" id="addBot">+ Add a bot</button>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><h2>Table rules</h2></div>
+              <label class="option">
+                <span class="option-text">
+                  <span>Stacking</span>
+                  <small>Answer a +2 with any +2 to pass it on, or bounce it back with a same-color Reverse</small>
+                </span>
+                <span class="switch"><input type="checkbox" id="optStacking"><span></span></span>
+              </label>
+              <label class="option">
+                <span class="option-text">
+                  <span>Turn timer</span>
+                  <small>Out of time? Autopilot plays your turn</small>
+                </span>
+                <select id="optTimer">
+                  <option value="0">Off</option>
+                  <option value="30">30 seconds</option>
+                  <option value="60">60 seconds</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="lobby-foot">
+            <button type="button" class="primary big" id="startBtn">Deal the cards</button>
+            <p class="muted" id="lobbyHint"></p>
+          </div>
+        </section>
+
+        <!-- Table -->
+        <section class="screen table" id="table" hidden>
+          <div class="opponents" id="opponents"></div>
+          <div class="waiting-line muted small" id="waitingLine" hidden></div>
+
+          <div class="center" id="center">
+            <div class="plane">
+              <button type="button" class="pile draw-pile" id="drawPile" aria-label="Draw a card">
+                <span class="card back" id="deckCard"><span class="face"></span><img class="art" src="img/back.svg" alt="" draggable="false"><span class="shine"></span></span>
+                <span class="pile-count" id="deckCount"></span>
+              </button>
+              <div class="pile discard" id="discard" aria-live="polite"></div>
+            </div>
+            <div class="table-info">
+              <div class="color-tag" id="colorTag"></div>
+              <div class="dir" id="dirTag"></div>
+              <div class="pending" id="pendingTag" hidden></div>
+            </div>
+          </div>
+
+          <div class="status-row">
+            <div class="status" id="status" aria-live="polite"></div>
+            <span class="clock" id="clock" hidden aria-label="Seconds left this turn"></span>
+          </div>
+
+          <div class="me" id="meArea">
+            <div class="me-bar" id="meBar"></div>
+            <div class="hand" id="hand"></div>
+            <div class="actions" id="actions">
+              <button type="button" class="primary" id="dropBtn" hidden>Drop</button>
+              <button type="button" class="ghost" id="cancelSelBtn" hidden>Cancel</button>
+              <button type="button" id="drawBtn">Draw</button>
+              <button type="button" id="passBtn" hidden>Pass</button>
+              <button type="button" class="last-btn" id="lastBtn" hidden>Last card!</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="side" id="side" hidden aria-label="Table talk">
+        <div class="side-head">
+          <h2>Table talk</h2>
+          <button type="button" class="ghost icon close-side" id="closeSide" aria-label="Close">×</button>
+        </div>
+        <ol class="feed" id="feed"></ol>
+        <form class="chat-form" id="chatForm" autocomplete="off">
+          <input id="chatInput" maxlength="200" placeholder="Say something…" aria-label="Chat message">
+          <button type="submit">Send</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <div class="overlay picker-wrap" id="picker" hidden>
+    <div class="modal picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+      <h2 id="pickerTitle">Pick the next color</h2>
+      <div class="picker-grid" id="pickerGrid"></div>
+      <button type="button" class="ghost" id="pickerCancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- How to play, with picture examples made from the real card art -->
+  <div class="overlay rules-wrap" id="rules" hidden>
+    <div class="modal rules-modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <div class="rules-head">
+        <h2 id="rulesTitle">How to play RaDrop</h2>
+        <button type="button" class="ghost icon" data-close-rules aria-label="Close">×</button>
+      </div>
+
+      <section class="rule">
+        <h3><span class="num">1</span> Be the first to empty your hand</h3>
+        <p>Everyone gets 7 cards. Take turns playing them onto the pile. <b>Whoever plays their last card wins.</b> There are no points; just play again.</p>
+        <div class="example">
+          <figure class="ex"><span class="ex-card fan"><img src="img/back.svg" alt=""><img src="img/back.svg" alt=""><img src="img/back.svg" alt=""></span><figcaption>7 cards each</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex win"><span class="ex-card empty">🏆</span><figcaption>0 cards = you win</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">2</span> Match the color <i>or</i> the number</h3>
+        <p>Your card must match the top card of the pile by <b>color</b> or by <b>number / symbol</b>. Wild cards go on anything.</p>
+        <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/amber-7.svg" alt="Amber 7"></span><figcaption>On the pile</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-2.svg" alt="Amber 2"></span><figcaption>Same color</figcaption></figure>
+          <figure class="ex ok"><span class="ex-card"><img src="img/jade-7.svg" alt="Jade 7"></span><figcaption>Same number</figcaption></figure>
+          <figure class="ex ok"><span class="ex-card"><img src="img/wild.svg" alt="Wild"></span><figcaption>Wild: always</figcaption></figure>
+          <figure class="ex no"><span class="ex-card"><img src="img/violet-3.svg" alt="Violet 3"></span><figcaption>No match</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">3</span> Can’t play? Draw one</h3>
+        <p>Press <b>Draw</b> or tap the deck. If the new card fits you can play it straight away, or press <b>Pass</b>. If it doesn’t fit, your turn ends.</p>
+        <div class="example">
+          <figure class="ex"><span class="ex-card deck"><img src="img/back.svg" alt="Deck"></span><figcaption>Draw 1</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-4.svg" alt="Amber 4"></span><figcaption>Fits? Play it</figcaption></figure>
+          <figure class="ex"><span class="ex-card"><img src="img/ruby-9.svg" alt="Ruby 9"></span><figcaption>Doesn’t fit: keep it</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">4</span> Same numbers drop together</h3>
+        <p>Holding several cards with the <b>same number</b>? Drop them all at once, <b>whatever their colors</b>, as long as one of them matches. Then <b>you choose</b> which of those colors carries on.</p>
+        <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/ruby-7.svg" alt="Ruby 7"></span><figcaption>On the pile</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/ruby-2.svg" alt="Ruby 2"></span><figcaption>Matches (ruby)</figcaption></figure>
+          <span class="ex-plus" aria-hidden="true">+</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/jade-2.svg" alt="Jade 2"></span><figcaption>Rides along</figcaption></figure>
+          <span class="ex-plus" aria-hidden="true">+</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/violet-2.svg" alt="Violet 2"></span><figcaption>Rides along</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex pile"><span class="ex-card"><img src="img/jade-2.svg" alt="Jade 2"></span><figcaption>You picked Jade</figcaption></figure>
+        </div>
+        <p class="tip">In the game: tap a 2 and all your 2s are selected. Tap one to leave it out, press <b>Drop</b>, then pick the color.</p>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">5</span> Action cards</h3>
+        <div class="example actions-grid">
+          <figure class="ex"><span class="ex-card"><img src="img/ruby-skip.svg" alt="Skip"></span><figcaption><b>Skip</b><br>the next player loses their turn</figcaption></figure>
+          <figure class="ex"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Reverse"></span><figcaption><b>Reverse</b><br>play changes direction (2 players: acts as a Skip)</figcaption></figure>
+          <figure class="ex"><span class="ex-card"><img src="img/amber-draw2.svg" alt="+2"></span><figcaption><b>+2</b><br>the next player draws 2 and is skipped</figcaption></figure>
+          <figure class="ex"><span class="ex-card"><img src="img/wild.svg" alt="Wild"></span><figcaption><b>Wild</b><br>goes on anything; you choose the color</figcaption></figure>
+          <figure class="ex"><span class="ex-card"><img src="img/wild4.svg" alt="Wild +4"></span><figcaption><b>Wild +4</b><br>choose the color; the next player draws 4</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">6</span> A +2 coming at you? Answer it</h3>
+        <p>Drop a <b>+2 of any color</b> and the penalty grows and moves on to the next player. Or bounce it back to whoever played it with a <b>Reverse of the same color</b>. Can’t answer? You draw the whole stack.</p>
+        <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/amber-draw2.svg" alt="Amber +2"></span><figcaption>Played at you</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/violet-draw2.svg" alt="Violet +2"></span><figcaption>Any +2: next player now faces +4</figcaption></figure>
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-reverse.svg" alt="Amber Reverse"></span><figcaption>Same-color Reverse: bounces back</figcaption></figure>
+          <figure class="ex no"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>Other-color Reverse: not allowed</figcaption></figure>
+        </div>
+        <p class="tip">A <b>Wild +4</b> can only be answered with another Wild +4.</p>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">7</span> Call “Last card!”</h3>
+        <p>When you’re about to be down to <b>one card</b>, press <b>Last card!</b> before or right after you play. If someone presses <b>Catch!</b> on you first, you draw 2.</p>
+        <div class="example">
+          <figure class="ex"><span class="ex-card"><img src="img/jade-5.svg" alt="Jade 5"></span><figcaption>Your last card</figcaption></figure>
+          <span class="mock last-btn">Last card!</span>
+          <span class="ex-or">or they</span>
+          <span class="mock catch-mock">Catch!</span>
+          <span class="ex-or">= you draw 2</span>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">8</span> 30 seconds per turn</h3>
+        <p>A countdown shows how long you have. It turns red for the last 5 seconds. At zero, <b>autopilot plays for you</b>: it drops your best card, or draws.</p>
+        <div class="example">
+          <span class="clock mine">30s</span>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <span class="clock urgent">3s</span>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <span class="ex-or">autopilot plays</span>
+        </div>
+      </section>
+
+      <section class="rule">
+        <h3><span class="num">9</span> Play with friends</h3>
+        <p>Press <b>Create a room</b> and send your friends the <b>4-letter code</b> or the <b>invite link</b>. On the same Wi-Fi they open the address shown in the server window (like <code>http://192.168.x.x:3000</code>). Add bots to fill empty seats.</p>
+      </section>
+
+      <p class="muted small keys">Keyboard: <kbd>D</kbd> draw · <kbd>P</kbd> pass · <kbd>L</kbd> last card · <kbd>Esc</kbd> cancel · <kbd>Enter</kbd> chat · <kbd>1</kbd>–<kbd>4</kbd> pick a color</p>
+      <button type="button" class="primary big" data-close-rules>Got it — let’s play</button>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="conn" id="conn" hidden>Reconnecting…</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

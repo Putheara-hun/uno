@@ -1,0 +1,4 @@
+* text=auto
+# Windows batch files need CRLF line endings to run reliably
+*.cmd text eol=crlf
+*.svg text
