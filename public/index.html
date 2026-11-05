@@ -88,7 +88,7 @@
               <label class="option">
                 <span class="option-text">
                   <span>Stacking</span>
-                  <small>Answer a +2 with any +2 to pass it on, or bounce it back with a same-color Reverse</small>
+                  <small>Answer a +2 with any +2 (a +4 with a +4) to pass it on, or bounce it back with a same-color Reverse</small>
                 </span>
                 <span class="switch"><input type="checkbox" id="optStacking"><span></span></span>
               </label>
@@ -293,7 +293,15 @@
           <span class="ex-arrow" aria-hidden="true">→</span>
           <span class="ex-or">next player faces <b>+4</b>,<br>you pick Ruby or Jade</span>
         </div>
-        <p class="tip">A <b>Wild +4</b> can only be answered with another Wild +4.</p>
+        <p class="rule-sub"><b>A Wild +4 coming at you?</b> Answer with another Wild +4, or bounce it back with a <b>Reverse in the color that was called</b>. It can bounce back and forth until someone has no matching Reverse, and they take all 4.</p>
+        <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/wild4.svg" alt="Wild +4"></span><figcaption>+4, Jade called</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>Jade Reverse: bounces back</figcaption></figure>
+          <figure class="ex ok"><span class="ex-card"><img src="img/wild4.svg" alt="Wild +4"></span><figcaption>Another +4: next faces +8</figcaption></figure>
+          <figure class="ex no"><span class="ex-card"><img src="img/ruby-reverse.svg" alt="Ruby Reverse"></span><figcaption>Other color: no</figcaption></figure>
+          <figure class="ex no"><span class="ex-card"><img src="img/jade-draw2.svg" alt="Jade +2"></span><figcaption>+2 on a +4: no</figcaption></figure>
+        </div>
       </section>
 
       <section class="rule">

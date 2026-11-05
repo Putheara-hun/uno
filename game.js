@@ -12,7 +12,8 @@
  *     and every +2 counts against the player after that (two +2s = +4).
  *     Answering a +2 allows only +2 combos.
  * Stacking (option): a +2 may be answered with a +2 of any color or a +4, passing the growing
- * penalty on; or bounced back to its sender with a Reverse of the current color. A +4 only takes a +4.
+ * penalty on; a +4 with a +4. Either can be bounced back to its sender with a Reverse of the
+ * current color (for a Wild +4, the color that was called), again and again until someone can't.
  */
 
 const COLORS = ['ruby', 'amber', 'jade', 'violet'];
@@ -138,10 +139,12 @@ class Game {
   canPlay(card) {
     const top = this.top;
     if (this.pendingDraw > 0) {
+      // Any waiting penalty can be bounced back to its sender with a Reverse of the current color
+      // (for a Wild +4 that's the color that was called) — and bounced again, until someone can't.
+      if (card.value === 'reverse' && card.color === this.currentColor) return true;
+      // A +4 can be passed on with a +4; a +2 with a +2 of any color or a +4.
       if (this.pendingKind === 'wild4') return card.value === 'wild4';
-      // A +2 can be answered with a +2 of any color or a +4 (passing it on),
-      // or bounced back to its sender with a Reverse of the current color.
-      return card.value === 'draw2' || card.value === 'wild4' || (card.value === 'reverse' && card.color === this.currentColor);
+      return card.value === 'draw2' || card.value === 'wild4';
     }
     return card.color === 'wild' || card.color === this.currentColor || card.value === top.value;
   }

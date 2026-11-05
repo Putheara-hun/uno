@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
 const crypto = require('node:crypto');
-const { server, rooms } = require('../server');
+const { server, rooms, sockets } = require('../server');
 
 let port;
 
@@ -18,6 +18,7 @@ test.before(async () => {
 
 test.after(() => {
   for (const r of rooms.values()) r.destroy();
+  for (const ws of sockets) ws.terminate(); // a failed test must not leave the run hanging
   server.close();
 });
 
@@ -206,6 +207,9 @@ test('a full single round against two bots, with a spectator who reconnects and 
   assert.equal(r.hands.find(h => h.id === r.winner).cards.length, 0);
   assert.equal(r.points, undefined);
   assert.ok(end.players.every(p => p.score === undefined));
+  // Wins are tallied per player for the room.
+  assert.equal(end.players.find(p => p.id === r.winner).wins, 1);
+  assert.equal(end.players.filter(p => p.wins === 0).length, end.players.length - 1, 'everyone else (spectator included) has 0');
   assert.ok(!a.errors.some(e => /went wrong|same number|match/.test(e)), `no rejected plays: ${a.errors.join('; ')}`);
   const room = rooms.get(end.code);
   assert.ok(room.feed.some(f => /wins!/.test(f.text)));
@@ -223,10 +227,17 @@ test('a full single round against two bots, with a spectator who reconnects and 
   a.autoplay = true;
   a.play();
   await a.waitState(s => s.phase === 'gameOver', 60000);
+  const second = a.state.result;
+  const total = a.state.players.reduce((sum, p) => sum + p.wins, 0);
+  assert.equal(total, 2, 'two games played, two wins recorded');
+  assert.ok(a.state.players.find(p => p.id === second.winner).wins >= 1);
+  // Players who left are removed in the lobby (with their wins); everyone else keeps theirs.
+  const keptWins = a.state.players.filter(p => !p.left).reduce((sum, p) => sum + p.wins, 0);
   a.autoplay = false;
   a.send({ t: 'lobby' });
   const lobby = await a.waitState(s => s.phase === 'lobby');
   assert.equal(lobby.players.length, 3);
+  assert.equal(lobby.players.reduce((sum, p) => sum + p.wins, 0), keptWins, 'wins survive going back to the lobby');
   await Promise.all([a.close(), b2.close()]);
 });
 

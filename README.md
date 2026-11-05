@@ -46,7 +46,7 @@ Table rules (host, in the lobby):
 
 | Option     | Choices         | Notes |
 |------------|-----------------|-------|
-| Stacking   | on (default) / off | Answer a +2 with a +2 of any color (or a +4) to pass the growing penalty on, or bounce it back to its sender with a Reverse of the same color. A +4 only takes a +4. |
+| Stacking   | on (default) / off | Answer a +2 with a +2 of any color (or a +4), or a +4 with a +4, to pass the growing penalty on. Or bounce either back to its sender with a Reverse of the current color (for a Wild +4, the color that was called). It can bounce back and forth until someone has no matching Reverse and draws the lot. |
 | Turn timer | off, 30 s (default), 60 s | A countdown shows the seconds left (red for the last 5). At zero, autopilot plays your turn: it drops the best card it can, or draws. |
 
 Keyboard: `D` draw · `P` pass · `L` last card · `Esc` cancel a selection · `Enter` chat · `1`–`4` pick a color.

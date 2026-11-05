@@ -203,13 +203,40 @@ test('the bounce works in a two-player game', () => {
   assert.equal(g.pendingDraw, 2);
 });
 
-test('a +4 cannot be bounced or answered with a +2', () => {
+test('a +4 can be bounced with a Reverse of the called color, but not answered with a +2', () => {
   const g = stackGame(
     ['a', 'b', 'c'],
-    [[{ id: 1, color: 'wild', value: 'wild4' }], [{ id: 2, color: 'jade', value: 'reverse' }, { id: 3, color: 'jade', value: 'draw2' }], []]
+    [
+      [{ id: 1, color: 'wild', value: 'wild4' }],
+      [{ id: 2, color: 'jade', value: 'reverse' }, { id: 3, color: 'jade', value: 'draw2' }, { id: 4, color: 'ruby', value: 'reverse' }],
+      [],
+    ]
   );
   g.play('a', 1, 'jade');
-  assert.deepEqual(g.playableIds('b'), []);
+  assert.deepEqual(g.playableIds('b'), [2], 'only the Jade Reverse');
+});
+
+test('a +4 bounces back and forth until someone has no matching Reverse', () => {
+  const g = stackGame(
+    ['a', 'b', 'c'],
+    [
+      [{ id: 1, color: 'wild', value: 'wild4' }, { id: 3, color: 'jade', value: 'reverse' }],
+      [{ id: 2, color: 'jade', value: 'reverse' }],
+      [],
+    ]
+  );
+  g.play('a', 1, 'jade');
+  assert.equal(g.current.id, 'b');
+  g.play('b', 2); // bounce back to a
+  assert.equal(g.current.id, 'a');
+  assert.equal(g.pendingDraw, 4);
+  g.play('a', 3); // and back again to b
+  assert.equal(g.current.id, 'b');
+  assert.equal(g.pendingDraw, 4);
+  assert.deepEqual(g.playableIds('b'), [], 'b has no Jade Reverse left');
+  const before = g.player('b').hand.length;
+  g.draw('b');
+  assert.equal(g.player('b').hand.length, before + 4);
 });
 
 test('finishing with a bounce Reverse still hands the penalty back', () => {

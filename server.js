@@ -279,6 +279,7 @@ class Room {
       name: this.uniqueName(cleanText(rawName, 16) || 'Player'),
       bot: false,
       left: false,
+      wins: 0, // games won in this room
       sockets: new Set(),
       chatTimes: [],
     };
@@ -293,7 +294,7 @@ class Room {
     if (this.seatedCount() >= MAX_PLAYERS) throw new GameError('This room is full.');
     const used = new Set(this.members.map(m => m.name));
     const name = BOT_NAMES.find(n => !used.has(n)) || this.uniqueName('Bot');
-    const m = { id: newId(), token: null, name, bot: true, left: false, sockets: new Set(), chatTimes: [] };
+    const m = { id: newId(), token: null, name, bot: true, left: false, wins: 0, sockets: new Set(), chatTimes: [] };
     this.members.push(m);
     this.post('system', `${m.name} (bot) joined`);
     return m;
@@ -447,6 +448,11 @@ class Room {
     const hands = g.players.map(p => ({ id: p.id, cards: p.hand.slice() }));
     this.phase = 'gameOver';
     this.result = { winner: g.winner, hands, round: this.round };
+    const winner = this.member(g.winner);
+    if (winner) {
+      winner.wins++;
+      this.post('system', `🏆 ${winner.name} has won ${winner.wins} game${winner.wins === 1 ? '' : 's'} in this room`);
+    }
   }
 
   backToLobby() {
@@ -689,6 +695,7 @@ class Room {
         left: m.left,
         connected: m.bot || m.sockets.size > 0,
         inRound: !!gp,
+        wins: m.wins,
         count: gp ? gp.hand.length : 0,
         saidLast: !!gp && gp.saidLast,
         vulnerable: !!gp && gp.vulnerable && !g.over,
@@ -988,4 +995,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, rooms };
+module.exports = { server, rooms, sockets };

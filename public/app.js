@@ -336,6 +336,7 @@
         p => `<li>
           ${avatar(p, 'sm')}
           <span class="lp-name">${esc(p.name)}${p.id === s.you ? ' <em>(you)</em>' : ''}</span>
+          ${p.wins ? `<span class="tag wins" title="Games won in this room">🏆 ${p.wins}</span>` : ''}
           ${p.id === s.hostId ? '<span class="tag host">host</span>' : ''}
           ${p.bot ? '<span class="tag">bot</span>' : ''}
           ${!p.connected ? '<span class="tag away">away</span>' : ''}
@@ -399,7 +400,7 @@
     return `<div class="${cls}" data-seat="${esc(p.id)}">
       <span class="av-wrap">${avatar(p)}${p.id === state.hostId ? '<span class="crown" title="Host">♛</span>' : ''}</span>
       <div class="seat-body">
-        <div class="seat-name"><span class="nm">${esc(p.name)}</span>${tags}</div>
+        <div class="seat-name"><span class="nm">${esc(p.name)}</span>${p.wins ? `<span class="wins-chip" title="Games won in this room">🏆${p.wins}</span>` : ''}${tags}</div>
         <div class="seat-hand" aria-label="${p.count} cards">${fanBacks(p.count)}<b>${p.count}</b></div>
         <div class="seat-meta">${p.saidLast ? '<span class="said">Last card!</span>' : `${p.count} card${p.count === 1 ? '' : 's'} left`}</div>
       </div>
@@ -487,7 +488,7 @@
     $('#meBar').innerHTML = inRound
       ? `<span class="av-wrap">${avatar(me, 'sm')}${me.id === s.hostId ? '<span class="crown" title="Host">♛</span>' : ''}</span>
          <div><div class="me-name">${esc(me.name)} <span class="muted">(you)</span></div>
-         <div class="muted small">${me.count} card${me.count === 1 ? '' : 's'} left${me.saidLast ? ' · <span class="said">Last card!</span>' : ''}</div></div>
+         <div class="muted small">${me.count} card${me.count === 1 ? '' : 's'} left${me.wins != null ? ` · 🏆 ${me.wins} win${me.wins === 1 ? '' : 's'}` : ''}${me.saidLast ? ' · <span class="said">Last card!</span>' : ''}</div></div>
          ${myTurn ? timerHTML(g) : ''}`
       : `<span class="muted">You’re watching this game.</span>`;
     renderHand();
@@ -557,10 +558,8 @@
     }
     if (g.turn === s.you) {
       if (g.pendingDraw) {
-        const answer =
-          g.pendingKind === 'wild4'
-            ? 'Stack a +4'
-            : `Stack +2s (any colors, each adds 2), bounce it back with ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse`;
+        const bounce = `bounce it back with ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse`;
+        const answer = g.pendingKind === 'wild4' ? `Stack a +4, ${bounce}` : `Stack +2s (any colors, each adds 2), ${bounce}`;
         return {
           text: g.playable.length ? `${answer} — or take ${g.pendingDraw}` : `Nothing to answer with — take ${g.pendingDraw}`,
           cls: 'mine warn',
@@ -736,7 +735,7 @@
     const host = player(s.hostId);
     const canAdvance = s.hostId === s.you || !host.connected || host.left;
     const hidden = resultHiddenFor === s.round;
-    const key = JSON.stringify([s.round, s.phase, canAdvance, hidden, s.players.map(p => [p.id, p.left, p.connected])]);
+    const key = JSON.stringify([s.round, s.phase, canAdvance, hidden, s.players.map(p => [p.id, p.left, p.connected, p.wins])]);
     if (key === resultKey) return;
     resultKey = key;
     if (hidden) {
@@ -757,6 +756,23 @@
       )
       .join('');
 
+    // Running tally of games won in this room.
+    const board = s.players.filter(p => !p.left && p.wins != null).sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name));
+    const most = Math.max(1, ...board.map(p => p.wins));
+    const boardHTML = board.length
+      ? `<h3 class="board-title">🏆 Wins in this room</h3>
+         <ol class="standings">${board
+           .map(
+             p => `<li class="${p.id === r.winner ? 'winner' : ''}">
+               ${avatar(p, 'sm')}
+               <span class="st-main"><span class="st-name">${esc(p.id === s.you ? `${p.name} (you)` : p.name)}${p.id === r.winner ? ' <span class="plus-one">+1</span>' : ''}</span>
+               <span class="st-bar"><i style="width:${((p.wins / most) * 100).toFixed(0)}%"></i></span></span>
+               <b>${p.wins}</b>
+             </li>`
+           )
+           .join('')}</ol>`
+      : '';
+
     const actions = canAdvance
       ? `<button type="button" class="primary big" data-act="next">Play again</button>
          <div class="row"><button type="button" class="ghost" data-act="hide-result">View table</button>
@@ -770,6 +786,7 @@
         <h2 id="resTitle">${esc(title)}</h2>
         <p class="res-points">First to play every card</p>
       </div>
+      ${boardHTML}
       ${handsHTML ? `<div class="res-hands">${handsHTML}</div>` : ''}
       <div class="modal-actions">${actions}</div>
     </div>`;
@@ -1085,7 +1102,7 @@
         el.classList.add('shake');
       }
       if (myTurn) {
-        if (g.pendingDraw && g.pendingKind === 'wild4') toast(`Only a +4 can answer a +4 — or take ${g.pendingDraw}`);
+        if (g.pendingDraw && g.pendingKind === 'wild4') toast(`Answer a +4 with a +4 or ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse — or take ${g.pendingDraw}`);
         else if (g.pendingDraw) toast(`Answer with +2s, ${/^[AEIOU]/.test(COLOR_NAME[g.color]) ? 'an' : 'a'} ${COLOR_NAME[g.color]} Reverse, or take ${g.pendingDraw}`);
         else if (g.drawnCardId !== null) toast('Only the card you just drew can be played');
         else toast('That card doesn’t match');
