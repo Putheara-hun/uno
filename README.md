@@ -35,8 +35,7 @@ Good to know about the free plan:
 ## How to play
 
 - Match the top card's **color** or its **number/symbol**. Wilds go on anything and you pick the next color.
-- **Skips and Reverses combine too.** Several Skips (any colors), or several Reverses (any colors), go down together and act like one card; you pick the color. A **Skip + Reverse of the same color** together flips play and then skips the next player.
-- **Several +2s go down together** (any colors), and every one counts: two +2s make the next player face +4. You pick the color. When a +2 is coming at you, only +2s can be combined.
+- **Action cards combine too.** Several of the same symbol (Skips, Reverses or +2s, any colors), or any mix of Skip, Reverse and +2 in one color, can go down together. Each kind works: Reverses flip play (once), Skips jump the next player (once), and every +2 counts against the player after that (two +2s = +4). You pick the color. When a +2 is coming at you, only +2s can be combined. Tapping a card offers both **Drop the set** and **Play just this one**.
 - **Same numbers go down together.** If you hold several cards with the same number, you can drop them all at once, whatever their colors, as long as one of them matches the pile. Then you choose which of those colors carries on. Tap one of the numbers and all your matching cards get selected. Tap any of them to leave it out, then press **Drop**.
 - Can't or don't want to play? **Draw** one card. If it fits you may play it right away (its matching numbers can go with it), otherwise your turn ends.
 - **Skip** jumps the next player and **Reverse** flips direction (with two players it acts as a Skip). **+2** and **Wild +4** make the next player draw and lose their turn.

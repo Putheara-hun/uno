@@ -269,11 +269,11 @@ test('a multi-drop needs one card that matches, and only matching numbers', () =
     { id: 2, color: 'amber', value: '2' },
     { id: 3, color: 'ruby', value: '3' },
     { id: 4, color: 'ruby', value: 'draw2' },
-    { id: 5, color: 'ruby', value: 'skip' },
+    { id: 5, color: 'jade', value: 'skip' },
   ]);
   assert.throws(() => g.play('a', [1, 2]), /match/, 'neither 2 matches a ruby 7');
   assert.throws(() => g.play('a', [1, 3]), /same number/);
-  assert.throws(() => g.play('a', [4, 5]), /same number/, 'a +2 and a Skip cannot be combined');
+  assert.throws(() => g.play('a', [4, 5]), /same number/, 'a +2 and a Skip of different colors cannot be combined');
   assert.equal(g.players[0].hand.length, 5);
 });
 
@@ -475,9 +475,57 @@ test('without stacking, two +2s make the next player draw 4 and lose their turn'
   assert.equal(g.current.id, 'c');
 });
 
-test('a +2 cannot be combined with other kinds of cards', () => {
-  const g = stackGame(['a', 'b'], [[{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'amber', value: 'skip' }], []]);
+test('a +2 cannot be combined with an action card of another symbol and color', () => {
+  const g = stackGame(['a', 'b'], [[{ id: 1, color: 'amber', value: 'draw2' }, { id: 2, color: 'jade', value: 'skip' }], []]);
   assert.throws(() => g.play('a', [1, 2]), GameError);
+});
+
+test('same-color Reverse + +2: play flips, then the next player faces +2', () => {
+  const g = stackGame(['a', 'b', 'c'], [[{ id: 1, color: 'violet', value: 'reverse' }, { id: 2, color: 'violet', value: 'draw2' }], [], []]);
+  g.currentColor = 'violet';
+  g.play('a', [1, 2]);
+  assert.equal(g.direction, -1);
+  assert.equal(g.current.id, 'c', 'c is next after the flip');
+  assert.equal(g.pendingDraw, 2);
+});
+
+test('same-color Skip + +2: the next player is skipped and the one after faces +2', () => {
+  const g = stackGame(['a', 'b', 'c', 'd'], [[{ id: 1, color: 'amber', value: 'skip' }, { id: 2, color: 'amber', value: 'draw2' }], [], [], []]);
+  const events = g.play('a', [1, 2]);
+  assert.ok(events.some(e => e.type === 'skip' && e.playerId === 'b'));
+  assert.equal(g.current.id, 'c');
+  assert.equal(g.pendingDraw, 2);
+});
+
+test('Skip + Reverse + +2 in one color: flip, skip, then +2', () => {
+  const g = stackGame(
+    ['a', 'b', 'c', 'd'],
+    [[{ id: 1, color: 'amber', value: 'skip' }, { id: 2, color: 'amber', value: 'reverse' }, { id: 3, color: 'amber', value: 'draw2' }], [], [], []]
+  );
+  g.play('a', [1, 2, 3]);
+  assert.equal(g.direction, -1);
+  assert.equal(g.current.id, 'c', 'd is skipped after the flip, c faces the +2');
+  assert.equal(g.pendingDraw, 2);
+});
+
+test('in a two-player game a Skip + +2 sends the +2 to the other player, not back to you', () => {
+  const g = stackGame(['a', 'b'], [[{ id: 1, color: 'amber', value: 'skip' }, { id: 2, color: 'amber', value: 'draw2' }], []]);
+  g.play('a', [1, 2]);
+  assert.equal(g.current.id, 'b');
+  assert.equal(g.pendingDraw, 2);
+});
+
+test('without stacking, a Reverse + +2 makes the next player (after the flip) draw 2 and lose their turn', () => {
+  const g = new Game(['a', 'b', 'c']);
+  g.turn = 0;
+  g.direction = 1;
+  g.discard.push({ id: 900, color: 'violet', value: '5' });
+  g.currentColor = 'violet';
+  g.players[0].hand = [{ id: 1, color: 'violet', value: 'reverse' }, { id: 2, color: 'violet', value: 'draw2' }, { id: 3, color: 'jade', value: '1' }];
+  const before = g.player('c').hand.length;
+  g.play('a', [1, 2]);
+  assert.equal(g.player('c').hand.length, before + 2);
+  assert.equal(g.current.id, 'b');
 });
 
 test('finishing with two +2s still hands out all four cards', () => {

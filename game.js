@@ -7,9 +7,9 @@
  * House rule — dropping several cards at once (at least one must match the pile; the player picks
  * which of the dropped colors continues):
  *   - number cards with the same number, whatever their colors;
- *   - Skips and Reverses that share a symbol (any colors) or share a color (a Skip + Reverse pair).
- *     They act once: a Reverse flips play, then a Skip jumps the next player.
- *   - several +2s (any colors): every one counts, so two +2s make the next player face +4.
+ *   - action cards (Skip, Reverse, +2) that share a symbol (any colors) or share a color (any mix).
+ *     Each kind does its thing once, in this order: Reverses flip play, Skips jump the next player,
+ *     and every +2 counts against the player after that (two +2s = +4).
  *     Answering a +2 allows only +2 combos.
  * Stacking (option): a +2 may be answered with a +2 of any color or a +4, passing the growing
  * penalty on; or bounced back to its sender with a Reverse of the current color. A +4 only takes a +4.
@@ -51,14 +51,13 @@ function shuffle(arr) {
 }
 
 const isNumber = card => /^[0-9]$/.test(card.value);
-const isAction = card => card.value === 'skip' || card.value === 'reverse';
+const isAction = card => card.value === 'skip' || card.value === 'reverse' || card.value === 'draw2';
 
 /** Whether these cards may go down together in one play. */
 function canCombine(cards) {
   if (cards.length <= 1) return true;
   const first = cards[0];
   if (cards.every(c => isNumber(c) && c.value === first.value)) return true;
-  if (cards.every(c => c.value === 'draw2')) return true;
   if (!cards.every(isAction)) return false;
   return cards.every(c => c.value === first.value) || cards.every(c => c.color === first.color);
 }
@@ -66,20 +65,18 @@ function canCombine(cards) {
 /** The biggest set this card could go down with. */
 function comboFor(card, hand) {
   if (isNumber(card)) return hand.filter(c => isNumber(c) && c.value === card.value);
-  if (card.value === 'draw2') return hand.filter(c => c.value === 'draw2');
   if (!isAction(card)) return [card];
   const bySymbol = hand.filter(c => c.value === card.value);
   const byColor = hand.filter(c => isAction(c) && c.color === card.color);
   return byColor.length > bySymbol.length ? byColor : bySymbol;
 }
 
-/** Every distinct maximal combo in a hand (same number; same action symbol; same-color Skip/Reverse). */
+/** Every distinct maximal combo in a hand (same number; same action symbol; same-color actions). */
 function comboGroups(hand) {
   const groups = new Map();
   const add = (key, c) => groups.set(key, [...(groups.get(key) || []), c]);
   for (const c of hand) {
     if (isNumber(c)) add(`n${c.value}`, c);
-    if (c.value === 'draw2') add('d', c);
     if (isAction(c)) {
       add(`s${c.value}`, c);
       add(`c${c.color}`, c);
@@ -200,7 +197,7 @@ class Game {
   }
 
   /**
-   * Play one card, or a combo (see canCombine): same numbers, or Skips/Reverses sharing a symbol or color.
+   * Play one card, or a combo (see canCombine): same numbers, or action cards sharing a symbol or color.
    * @param {number|number[]} cardIds
    * @param {string} [chosenColor] required for a wild; for a multi-drop, which of the dropped colors continues
    */
@@ -218,7 +215,7 @@ class Game {
         throw new GameError('When answering a +2, only +2 cards can go down together — or play a single card.');
       }
       if (!canCombine(cards)) {
-        throw new GameError('Only same numbers, several +2s, or Skips and Reverses that share a symbol or a color, can go down together.');
+        throw new GameError('Only same numbers, or action cards (Skip, Reverse, +2) that share a symbol or a color, can go down together.');
       }
     }
     const lead = cards.find(c => this.canPlay(c));
@@ -248,13 +245,24 @@ class Game {
     if (p.hand.length === 1) p.vulnerable = !p.saidLast;
     else p.saidLast = false;
 
+    const combo = cards.length > 1;
+    const flips = cards.some(c => c.value === 'reverse');
+    const skips = cards.some(c => c.value === 'skip');
+    const plus = cards.filter(c => c.value === 'draw2').length * 2; // every +2 counts
+    // Where a combo's +2s land: the next player, or the one after if a Skip jumps someone (never yourself).
+    const plusSteps = () => (skips && this.nextIndex(2) !== this.turn ? 2 : 1);
+
     if (p.hand.length === 0) {
       // A finishing draw card (or a finishing bounce) still hits its target.
       let victim = null;
       let amount = 0;
-      if (card.value === 'draw2' || card.value === 'wild4') {
+      if (card.value === 'wild4') {
         victim = this.players[this.nextIndex(1)];
-        amount = this.pendingDraw + (card.value === 'draw2' ? 2 * cards.length : 4);
+        amount = this.pendingDraw + 4;
+      } else if (plus > 0) {
+        if (combo && flips) this.direction *= -1;
+        victim = this.players[this.nextIndex(combo ? plusSteps() : 1)];
+        amount = this.pendingDraw + plus;
       } else if (card.value === 'reverse' && this.pendingDraw > 0) {
         this.direction *= -1;
         victim = this.players[this.nextIndex(1)];
@@ -274,17 +282,35 @@ class Game {
       return events;
     }
 
-    if (cards.length > 1 && cards.every(isAction)) {
-      // A Skip/Reverse combo acts once: a Reverse flips play, then a Skip jumps the next player.
-      if (cards.some(c => c.value === 'reverse')) {
+    if (combo && cards.every(isAction)) {
+      // An action combo: Reverses flip play (once), Skips jump the next player (once),
+      // and every +2 counts against the player after that.
+      if (flips) {
         this.direction *= -1;
         events.push({ type: 'reverse', direction: this.direction });
       }
-      if (cards.some(c => c.value === 'skip') || this.players.length === 2) {
-        events.push({ type: 'skip', playerId: this.players[this.nextIndex(1)].id });
-        this.endTurn(2);
+      if (!plus) {
+        if (skips || this.players.length === 2) {
+          events.push({ type: 'skip', playerId: this.players[this.nextIndex(1)].id });
+          this.endTurn(2);
+        } else {
+          this.endTurn(1);
+        }
+        return events;
+      }
+      const steps = plusSteps();
+      if (steps === 2) events.push({ type: 'skip', playerId: this.players[this.nextIndex(1)].id });
+      if (this.options.stacking) {
+        this.pendingDraw += plus;
+        this.pendingKind = 'draw2';
+        this.endTurn(steps);
+        events.push({ type: 'stack', playerId: this.current.id, amount: this.pendingDraw });
       } else {
-        this.endTurn(1);
+        const victim = this.players[this.nextIndex(steps)];
+        const drawn = this.drawCards(victim, plus);
+        events.push({ type: 'draw', playerId: victim.id, count: drawn.length, forced: true });
+        events.push({ type: 'skip', playerId: victim.id });
+        this.endTurn(steps + 1);
       }
       return events;
     }
@@ -421,7 +447,10 @@ function botMove(game, playerId) {
   const danger = next.hand.length <= 2;
 
   // Everything that can go down with this card (only more +2s while answering a +2).
-  const groupOf = c => (game.pendingDraw > 0 && c.value !== 'draw2' ? [c] : comboFor(c, me.hand));
+  const groupOf = c => {
+    if (game.pendingDraw > 0) return c.value === 'draw2' ? me.hand.filter(x => x.value === 'draw2') : [c];
+    return comboFor(c, me.hand);
+  };
 
   let best = null;
   let bestScore = -Infinity;

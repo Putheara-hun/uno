@@ -142,6 +142,7 @@
             <div class="hand" id="hand"></div>
             <div class="actions" id="actions">
               <button type="button" class="primary" id="dropBtn" hidden>Drop</button>
+              <button type="button" id="soloBtn" hidden>Play just this one</button>
               <button type="button" class="ghost" id="cancelSelBtn" hidden>Cancel</button>
               <button type="button" id="drawBtn">Draw</button>
               <button type="button" id="passBtn" hidden>Pass</button>
@@ -233,7 +234,7 @@
         </div>
         <p class="tip">In the game: tap a 2 and all your 2s are selected. Tap one to leave it out, press <b>Drop</b>, then pick the color.</p>
 
-        <p class="rule-sub"><b>Skips and Reverses combine too:</b> several <b>Skips</b> (any colors) together, or several <b>Reverses</b> (any colors), work like one card, and you pick the color. A <b>Skip + Reverse of the same color</b> together flips play and then skips the next player.</p>
+        <p class="rule-sub"><b>Action cards combine too:</b> several of the <b>same symbol</b> (Skips, Reverses or +2s, any colors), or any mix of <b>Skip, Reverse and +2 in one color</b>. Each kind works: the Reverse flips play, the Skip jumps the next player, and every +2 counts against the player after that. When you tap a card you can <b>drop the whole set</b> or <b>play just that one</b>.</p>
         <div class="example">
           <figure class="ex pile"><span class="ex-card"><img src="img/amber-7.svg" alt="Amber 7"></span><figcaption>On the pile</figcaption></figure>
           <span class="ex-arrow" aria-hidden="true">→</span>
@@ -244,12 +245,21 @@
           <span class="ex-or">play flips,<br>next player skipped</span>
         </div>
         <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>On the pile</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/violet-reverse.svg" alt="Violet Reverse"></span><figcaption>Matches (Reverse)</figcaption></figure>
+          <span class="ex-plus" aria-hidden="true">+</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/violet-draw2.svg" alt="Violet +2"></span><figcaption>Same color</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <span class="ex-or">play flips, then the<br>next player faces +2</span>
+        </div>
+        <div class="example">
           <figure class="ex ok"><span class="ex-card"><img src="img/amber-skip.svg" alt="Amber Skip"></span><figcaption>Matches</figcaption></figure>
           <span class="ex-plus" aria-hidden="true">+</span>
           <figure class="ex ok"><span class="ex-card"><img src="img/violet-skip.svg" alt="Violet Skip"></span><figcaption>Any-color Skip</figcaption></figure>
           <span class="ex-arrow" aria-hidden="true">→</span>
           <span class="ex-or">one player skipped,<br>you pick Amber or Violet</span>
-          <figure class="ex no"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>Skip + other-color Reverse: no</figcaption></figure>
+          <figure class="ex no"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>Other symbol and other color: no</figcaption></figure>
         </div>
         <p class="tip">While a +2 is coming at you, only +2s can be combined (see 6).</p>
       </section>

@@ -16,7 +16,7 @@ const { EventEmitter } = require('events');
 const { Game, GameError, botMove } = require('./game');
 
 const PORT = Number(process.env.PORT) || 3000;
-const PROTOCOL = 4; // 2: multi-card plays (cardIds), no points; 3: Skip/Reverse combos; 4: +2 combos
+const PROTOCOL = 5; // 2: multi-card plays, no points; 3: Skip/Reverse combos; 4: +2 combos; 5: same-color action combos
 const SPEED = Math.max(1, Number(process.env.RADROP_SPEED) || 1); // >1 speeds up bots (used by tests)
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_PLAYERS = 8;

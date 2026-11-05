@@ -126,7 +126,7 @@
   const FILE_HELP =
     'This page was opened straight from disk, so it can’t reach the game server. Double-click start.cmd (or run “npm start”), then open http://localhost:3000';
   const ANSWER_TIMEOUT = 6000;
-  const PROTOCOL = 4; // must match server.js
+  const PROTOCOL = 5; // must match server.js
   const OUTDATED_HELP =
     'The game server is running an older version of RaDrop. Close the server window and double-click start.cmd again (or restart “npm start”), then reload this page.';
 
@@ -496,6 +496,13 @@
     const dropBtn = $('#dropBtn');
     dropBtn.hidden = !selection;
     dropBtn.textContent = selCount > 1 ? `Drop ${selCount} cards` : 'Play this card';
+    // The other option: play only the card that was tapped.
+    const solo = $('#soloBtn');
+    solo.hidden = !selection || selCount < 2 || !selection.ids.has(selection.anchor);
+    if (!solo.hidden) {
+      const anchor = g.hand.find(c => c.id === selection.anchor);
+      solo.textContent = `Play just the ${anchor ? cardLabel(anchor) : 'one card'}`;
+    }
     $('#cancelSelBtn').hidden = !selection;
     const drawBtn = $('#drawBtn');
     drawBtn.disabled = !g.canDraw;
@@ -546,7 +553,7 @@
     const cur = player(g.turn);
     if (g.turn === s.you && selection && selectionValid()) {
       const n = selection.ids.size;
-      return { text: `${n} card${n === 1 ? '' : 's'} selected — tap cards to add or remove them, then drop`, cls: 'mine' };
+      return { text: `${n} card${n === 1 ? '' : 's'} selected — drop them together, play just one, or tap cards to change the set`, cls: 'mine' };
     }
     if (g.turn === s.you) {
       if (g.pendingDraw) {
@@ -569,16 +576,15 @@
 
   /* ---- multi-drop selection (same numbers; Skips/Reverses sharing a symbol or a color) ---- */
 
-  let selection = null; // { ids: Set<number> }
+  let selection = null; // { ids: Set<number>, anchor: the card that was tapped }
 
-  const isAction = c => c.value === 'skip' || c.value === 'reverse';
+  const isAction = c => c.value === 'skip' || c.value === 'reverse' || c.value === 'draw2';
 
-  /** Mirrors the engine's canCombine: which cards may go down together. */
+  /** Mirrors the engine's canCombine: same numbers, or action cards sharing a symbol or a color. */
   function canCombine(cards) {
     if (cards.length <= 1) return true;
     const first = cards[0];
     if (cards.every(c => isNum(c.value) && c.value === first.value)) return true;
-    if (cards.every(c => c.value === 'draw2')) return true;
     if (!cards.every(isAction)) return false;
     return cards.every(c => c.value === first.value) || cards.every(c => c.color === first.color);
   }
@@ -586,9 +592,8 @@
   /** The biggest set this card can go down with (only more +2s while answering a +2). */
   function comboFor(card, hand) {
     const g = state && state.game;
-    if (g && g.pendingDraw && card.value !== 'draw2') return [card];
+    if (g && g.pendingDraw) return card.value === 'draw2' ? hand.filter(c => c.value === 'draw2') : [card];
     if (isNum(card.value)) return hand.filter(c => isNum(c.value) && c.value === card.value);
-    if (card.value === 'draw2') return hand.filter(c => c.value === 'draw2');
     if (!isAction(card)) return [card];
     const bySymbol = hand.filter(c => c.value === card.value);
     const byColor = hand.filter(c => isAction(c) && c.color === card.color);
@@ -1094,7 +1099,7 @@
     // Holding cards that can go down with it? Select them all; the player can then trim the set.
     const group = comboFor(card, g.hand);
     if (group.length > 1) {
-      selection = { ids: new Set(group.map(c => c.id)) };
+      selection = { ids: new Set(group.map(c => c.id)), anchor: id };
       renderTable(null);
       return;
     }
@@ -1120,6 +1125,12 @@
   $('#hand').addEventListener('click', e => onCardClick(e.target.closest('.card')));
   $('#dropBtn').addEventListener('click', dropSelection);
   $('#cancelSelBtn').addEventListener('click', clearSelection);
+  $('#soloBtn').addEventListener('click', () => {
+    if (!selectionValid() || !selection.ids.has(selection.anchor)) return clearSelection();
+    const id = selection.anchor;
+    selection = null;
+    send({ t: 'play', cardIds: [id] });
+  });
   $('#drawBtn').addEventListener('click', () => send({ t: 'draw' }));
   $('#drawPile').addEventListener('click', () => {
     if (state && state.game && state.game.canDraw) send({ t: 'draw' });
