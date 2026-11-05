@@ -16,7 +16,7 @@ const { EventEmitter } = require('events');
 const { Game, GameError, botMove } = require('./game');
 
 const PORT = Number(process.env.PORT) || 3000;
-const PROTOCOL = 2; // 2: multi-card plays (cardIds), no points
+const PROTOCOL = 3; // 2: multi-card plays (cardIds), no points; 3: Skip/Reverse combos
 const SPEED = Math.max(1, Number(process.env.RADROP_SPEED) || 1); // >1 speeds up bots (used by tests)
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_PLAYERS = 8;
@@ -391,7 +391,11 @@ class Room {
     switch (e.type) {
       case 'play':
         if (e.cards && e.cards.length > 1) {
-          return `${n} dropped ${e.cards.length} × ${e.card.value} (${e.cards.map(c => COLOR_NAME[c.color]).join(', ')}) → ${COLOR_NAME[e.color]}`;
+          const sameValue = e.cards.every(c => c.value === e.card.value);
+          const what = sameValue
+            ? `${e.cards.length} × ${VALUE_NAME[e.card.value] || e.card.value} (${e.cards.map(c => COLOR_NAME[c.color]).join(', ')})`
+            : e.cards.map(cardText).join(' + ');
+          return `${n} dropped ${what} → ${COLOR_NAME[e.color]}`;
         }
         return `${n} played ${cardText(e.card)}${e.card.color === 'wild' ? ` → ${COLOR_NAME[e.color]}` : ''}`;
       case 'draw':

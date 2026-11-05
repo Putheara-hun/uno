@@ -218,7 +218,7 @@
       </section>
 
       <section class="rule">
-        <h3><span class="num">4</span> Same numbers drop together</h3>
+        <h3><span class="num">4</span> Drop several cards at once</h3>
         <p>Holding several cards with the <b>same number</b>? Drop them all at once, <b>whatever their colors</b>, as long as one of them matches. Then <b>you choose</b> which of those colors carries on.</p>
         <div class="example">
           <figure class="ex pile"><span class="ex-card"><img src="img/ruby-7.svg" alt="Ruby 7"></span><figcaption>On the pile</figcaption></figure>
@@ -232,6 +232,26 @@
           <figure class="ex pile"><span class="ex-card"><img src="img/jade-2.svg" alt="Jade 2"></span><figcaption>You picked Jade</figcaption></figure>
         </div>
         <p class="tip">In the game: tap a 2 and all your 2s are selected. Tap one to leave it out, press <b>Drop</b>, then pick the color.</p>
+
+        <p class="rule-sub"><b>Skips and Reverses combine too:</b> several <b>Skips</b> (any colors) together, or several <b>Reverses</b> (any colors), work like one card, and you pick the color. A <b>Skip + Reverse of the same color</b> together flips play and then skips the next player.</p>
+        <div class="example">
+          <figure class="ex pile"><span class="ex-card"><img src="img/amber-7.svg" alt="Amber 7"></span><figcaption>On the pile</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-skip.svg" alt="Amber Skip"></span><figcaption>Amber Skip</figcaption></figure>
+          <span class="ex-plus" aria-hidden="true">+</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-reverse.svg" alt="Amber Reverse"></span><figcaption>Amber Reverse</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <span class="ex-or">play flips,<br>next player skipped</span>
+        </div>
+        <div class="example">
+          <figure class="ex ok"><span class="ex-card"><img src="img/amber-skip.svg" alt="Amber Skip"></span><figcaption>Matches</figcaption></figure>
+          <span class="ex-plus" aria-hidden="true">+</span>
+          <figure class="ex ok"><span class="ex-card"><img src="img/violet-skip.svg" alt="Violet Skip"></span><figcaption>Any-color Skip</figcaption></figure>
+          <span class="ex-arrow" aria-hidden="true">→</span>
+          <span class="ex-or">one player skipped,<br>you pick Amber or Violet</span>
+          <figure class="ex no"><span class="ex-card"><img src="img/jade-reverse.svg" alt="Jade Reverse"></span><figcaption>Skip + other-color Reverse: no</figcaption></figure>
+        </div>
+        <p class="tip">Answering a +2 is always one card at a time.</p>
       </section>
 
       <section class="rule">

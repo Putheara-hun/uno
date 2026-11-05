@@ -268,12 +268,12 @@ test('a multi-drop needs one card that matches, and only matching numbers', () =
     { id: 1, color: 'jade', value: '2' },
     { id: 2, color: 'amber', value: '2' },
     { id: 3, color: 'ruby', value: '3' },
-    { id: 4, color: 'ruby', value: 'skip' },
-    { id: 5, color: 'ruby', value: 'skip' },
+    { id: 4, color: 'ruby', value: 'draw2' },
+    { id: 5, color: 'ruby', value: 'draw2' },
   ]);
   assert.throws(() => g.play('a', [1, 2]), /match/, 'neither 2 matches a ruby 7');
   assert.throws(() => g.play('a', [1, 3]), /same number/);
-  assert.throws(() => g.play('a', [4, 5]), /same number/, 'action cards cannot be combined');
+  assert.throws(() => g.play('a', [4, 5]), /same number/, '+2 cards are not combined (they stack instead)');
   assert.equal(g.players[0].hand.length, 5);
 });
 
@@ -347,6 +347,113 @@ test('bots drop all their cards of a number together', () => {
   assert.equal(move.action, 'play');
   assert.deepEqual(move.cardIds.slice().sort(), [1, 2, 3]);
   assert.equal(move.color, 'jade', 'keeps the color it still holds');
+});
+
+/* ---- Skip / Reverse combos ---- */
+
+function fourPlayers(hand, top = { id: 900, color: 'amber', value: '7' }) {
+  const g = new Game(['a', 'b', 'c', 'd']);
+  g.turn = 0;
+  g.direction = 1;
+  g.discard.push(top);
+  g.currentColor = top.color;
+  g.players[0].hand = hand.concat([{ id: 950, color: 'jade', value: '1' }, { id: 951, color: 'jade', value: '8' }]);
+  return g;
+}
+
+test('a Skip and a Reverse of the same color go down together: flip, then skip one', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'amber', value: 'reverse' },
+  ]);
+  const events = g.play('a', [1, 2]);
+  assert.equal(g.direction, -1);
+  assert.ok(events.some(e => e.type === 'skip' && e.playerId === 'd'), 'd (next after the flip) is skipped');
+  assert.equal(g.current.id, 'c');
+  assert.equal(g.currentColor, 'amber');
+});
+
+test('Skips of different colors go down together; they skip one player and you pick the color', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'violet', value: 'skip' },
+    { id: 3, color: 'ruby', value: 'skip' },
+  ]);
+  g.play('a', [1, 2, 3], 'violet');
+  assert.equal(g.current.id, 'c', 'only b is skipped');
+  assert.equal(g.currentColor, 'violet');
+  assert.equal(g.top.id, 2);
+  assert.equal(g.players[0].hand.length, 2);
+});
+
+test('Reverses of different colors flip play once', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'reverse' },
+    { id: 2, color: 'jade', value: 'reverse' },
+  ]);
+  g.play('a', [1, 2], 'jade');
+  assert.equal(g.direction, -1);
+  assert.equal(g.current.id, 'd');
+  assert.equal(g.currentColor, 'jade');
+});
+
+test('a Skip and a Reverse of different colors cannot be combined', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'jade', value: 'reverse' },
+  ]);
+  assert.throws(() => g.play('a', [1, 2]), GameError);
+  assert.equal(g.players[0].hand.length, 4);
+});
+
+test('a Skip + Reverse combo in a two-player game gives you another turn', () => {
+  const g = new Game(['a', 'b']);
+  g.turn = 0;
+  g.discard.push({ id: 900, color: 'amber', value: '7' });
+  g.currentColor = 'amber';
+  g.players[0].hand = [
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'amber', value: 'reverse' },
+    { id: 3, color: 'jade', value: '1' },
+  ];
+  g.play('a', [1, 2]);
+  assert.equal(g.current.id, 'a');
+});
+
+test('no combos while answering a +2', () => {
+  const g = new Game(['a', 'b', 'c'], { stacking: true });
+  g.turn = 0;
+  g.discard.push({ id: 900, color: 'amber', value: '5' });
+  g.currentColor = 'amber';
+  g.players[0].hand = [{ id: 1, color: 'amber', value: 'draw2' }, { id: 9, color: 'jade', value: '1' }];
+  g.players[1].hand = [
+    { id: 2, color: 'amber', value: 'reverse' },
+    { id: 3, color: 'jade', value: 'reverse' },
+    { id: 4, color: 'jade', value: '4' },
+  ];
+  g.play('a', 1);
+  assert.throws(() => g.play('b', [2, 3], 'jade'), /single card/);
+  g.play('b', [2]); // the bounce on its own is fine
+  assert.equal(g.current.id, 'a');
+});
+
+test('last card can be called when a Skip/Reverse combo would leave one card', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'amber', value: 'reverse' },
+  ]);
+  g.players[0].hand = g.players[0].hand.slice(0, 3); // skip, reverse, jade 1
+  assert.equal(g.canCallLast('a'), true);
+});
+
+test('bots drop their Skip/Reverse combos', () => {
+  const g = fourPlayers([
+    { id: 1, color: 'amber', value: 'skip' },
+    { id: 2, color: 'amber', value: 'reverse' },
+  ]);
+  g.players[0].hand = g.players[0].hand.filter(c => c.id < 3).concat([{ id: 5, color: 'jade', value: '1' }]);
+  const move = botMove(g, 'a');
+  if (move.cardIds.some(id => id === 1 || id === 2)) assert.deepEqual(move.cardIds.slice().sort(), [1, 2]);
 });
 
 test('drawn playable card: only that card may be played, or pass', () => {

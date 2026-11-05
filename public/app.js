@@ -126,7 +126,7 @@
   const FILE_HELP =
     'This page was opened straight from disk, so it can’t reach the game server. Double-click start.cmd (or run “npm start”), then open http://localhost:3000';
   const ANSWER_TIMEOUT = 6000;
-  const PROTOCOL = 2; // must match server.js
+  const PROTOCOL = 3; // must match server.js
   const OUTDATED_HELP =
     'The game server is running an older version of RaDrop. Close the server window and double-click start.cmd again (or restart “npm start”), then reload this page.';
 
@@ -546,7 +546,7 @@
     const cur = player(g.turn);
     if (g.turn === s.you && selection && selectionValid()) {
       const n = selection.ids.size;
-      return { text: `${n} × ${selection.value} selected — tap a ${selection.value} to add or remove it, then drop`, cls: 'mine' };
+      return { text: `${n} card${n === 1 ? '' : 's'} selected — tap cards to add or remove them, then drop`, cls: 'mine' };
     }
     if (g.turn === s.you) {
       if (g.pendingDraw) {
@@ -567,18 +567,39 @@
     return { text: `${cur.name}’s turn${cur.connected ? '' : ' (away)'}`, cls: '' };
   }
 
-  /* ---- same-number multi-drop selection ---- */
+  /* ---- multi-drop selection (same numbers; Skips/Reverses sharing a symbol or a color) ---- */
 
-  let selection = null; // { value, ids: Set<number> }
+  let selection = null; // { ids: Set<number> }
 
-  const sameNumberCards = (card, hand) => (isNum(card.value) ? hand.filter(c => isNum(c.value) && c.value === card.value) : [card]);
+  const isAction = c => c.value === 'skip' || c.value === 'reverse';
 
-  /** A selection stays valid while it's still my turn, the cards are still mine, and one of them can lead. */
+  /** Mirrors the engine's canCombine: which cards may go down together. */
+  function canCombine(cards) {
+    if (cards.length <= 1) return true;
+    const first = cards[0];
+    if (cards.every(c => isNum(c.value) && c.value === first.value)) return true;
+    if (!cards.every(isAction)) return false;
+    return cards.every(c => c.value === first.value) || cards.every(c => c.color === first.color);
+  }
+
+  /** The biggest set this card can go down with. */
+  function comboFor(card, hand) {
+    if (isNum(card.value)) return hand.filter(c => isNum(c.value) && c.value === card.value);
+    if (!isAction(card)) return [card];
+    const bySymbol = hand.filter(c => c.value === card.value);
+    const byColor = hand.filter(c => isAction(c) && c.color === card.color);
+    return byColor.length > bySymbol.length ? byColor : bySymbol;
+  }
+
+  const selectedCards = () => (selection && state.game.hand ? state.game.hand.filter(c => selection.ids.has(c.id)) : []);
+
+  /** A selection stays valid while it's still my turn, the cards are still mine and combine, and one can lead. */
   function selectionValid() {
     const g = state && state.game;
-    if (!selection || !g || !g.hand || g.turn !== state.you) return false;
+    if (!selection || !g || !g.hand || g.turn !== state.you || g.pendingDraw) return false;
     const ids = [...selection.ids];
-    return ids.length > 0 && ids.every(id => g.hand.some(c => c.id === id)) && ids.some(id => g.playable.includes(id));
+    const cards = selectedCards();
+    return ids.length > 0 && cards.length === ids.length && canCombine(cards) && ids.some(id => g.playable.includes(id));
   }
 
   function clearSelection() {
@@ -622,6 +643,7 @@
     const myTurn = g.turn === state.you;
     const cards = g.hand.slice().sort(cardSort);
     const geo = handGeometry(cards.length);
+    const chosen = selectedCards();
     let k = 0;
     hand.classList.toggle('my-turn', myTurn);
     hand.classList.toggle('selecting', !!selection);
@@ -630,7 +652,7 @@
       .map((c, i) => {
         const can = playable.has(c.id);
         const picked = !!selection && selection.ids.has(c.id);
-        const joinable = !!selection && !picked && isNum(c.value) && c.value === selection.value;
+        const joinable = !!selection && !picked && canCombine([...chosen, c]);
         const isNew = !handSeen.ids.has(c.id);
         const cls = [
           can || picked || joinable ? 'playable' : 'dim',
@@ -821,7 +843,11 @@
       const n = nameOf(e.playerId);
       switch (e.type) {
         case 'play':
-          if (e.cards && e.cards.length > 1) toast(`${n} dropped ${e.cards.length} × ${e.card.value} at once!`, 'last');
+          if (e.cards && e.cards.length > 1) {
+            const same = e.cards.every(c => c.value === e.card.value);
+            const what = same ? `${e.cards.length} × ${isNum(e.card.value) ? e.card.value : VALUE_NAME[e.card.value]}` : e.cards.map(cardLabel).join(' + ');
+            toast(`${n} dropped ${what} at once!`, 'last');
+          }
           break;
         case 'skip':
           toast(mine ? 'You’re skipped!' : `${n} is skipped`, mine ? 'bad' : '');
@@ -1024,7 +1050,7 @@
     if (!card) return;
     const myTurn = g.turn === state.you;
 
-    // Building a same-number drop: tap to add or remove cards of that number.
+    // Building a multi-drop: tap to add or remove cards that combine with the selection.
     if (selection && myTurn) {
       if (selection.ids.has(id)) {
         selection.ids.delete(id);
@@ -1032,7 +1058,7 @@
         renderTable(null);
         return;
       }
-      if (isNum(card.value) && card.value === selection.value) {
+      if (canCombine([...selectedCards(), card])) {
         selection.ids.add(id);
         renderTable(null);
         return;
@@ -1060,10 +1086,10 @@
       openPicker([id], COLORS);
       return;
     }
-    // Holding more of the same number? Select them all so they can go down together.
-    const group = sameNumberCards(card, g.hand);
+    // Holding cards that can go down with it? Select them all; the player can then trim the set.
+    const group = g.pendingDraw ? [card] : comboFor(card, g.hand);
     if (group.length > 1) {
-      selection = { value: card.value, ids: new Set(group.map(c => c.id)) };
+      selection = { ids: new Set(group.map(c => c.id)) };
       renderTable(null);
       return;
     }

@@ -351,6 +351,8 @@ select:disabled, input:disabled { opacity: 0.6; cursor: default; }
 }
 .rule p { margin: 0 0 12px; color: #d9d5f0; }
 .rule .tip { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
+.rule .rule-sub { margin: 16px 0 10px; }
+.rule .example + .example { margin-top: 10px; }
 .rule code { font-size: 13px; padding: 1px 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.07); }
 .example {
   display: flex;
